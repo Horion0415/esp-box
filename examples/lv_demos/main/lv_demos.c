@@ -34,25 +34,7 @@ void app_main(void)
      */
     bsp_display_lock(0);
 
-#if LV_USE_DEMO_WIDGETS
     lv_demo_widgets();      /* A widgets example. This is what you get out of the box */
-#endif
-
-#if LV_USE_DEMO_KEYPAD_AND_ENCODER
-    lv_demo_keypad_encoder();   /* Demonstrate the usage of encoder and keyboard */
-#endif
-
-#if LV_USE_DEMO_BENCHMARK
-    lv_demo_benchmark();    /* A demo to measure the performance of LVGL or to compare different settings. */
-#endif
-
-#if LV_USE_DEMO_STRESS
-    lv_demo_stress();       /* A stress test for LVGL. */
-#endif
-
-#if LV_USE_DEMO_MUSIC
-    lv_demo_music();        /* A modern, smartphone-like music player demo. */
-#endif
 
     bsp_display_unlock();
 }
