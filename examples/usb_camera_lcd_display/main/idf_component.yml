@@ -1,4 +1,0 @@
-dependencies:
-  idf: ">=5.0"
-  usb_stream:
-    version: "~1.3.*"
