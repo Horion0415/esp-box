@@ -8,10 +8,16 @@
 
 #include "demos/lv_demos.h"
 
-#define LOG_MEMORY_SYSTEM_INFO         (0)
-#define LOG_TASK_SYSTEM_INFO           (0)
+#include "esp_log.h"
+
+#define LOG_MEMORY_SYSTEM_INFO         (1)
+#define LOG_TASK_SYSTEM_INFO           (1)
 #define LOG_TIME_INTERVAL_MS           (2000)
 #define SYS_TASKS_ELAPSED_TIME_MS      (2000)   // Period of stats measurement
+
+static const char *TAG = "task_memory_detection";
+
+esp_err_t print_real_time_mem_stats(void);
 
 void app_main(void)
 {

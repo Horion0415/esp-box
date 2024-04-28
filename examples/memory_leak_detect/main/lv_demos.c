@@ -8,7 +8,7 @@
 
 #include "demos/lv_demos.h"
 #include "esp_log.h"
-#define MEMORY_LEAK_DETECT          (0)
+#define MEMORY_LEAK_DETECT          (1)
 #if MEMORY_LEAK_DETECT
 #define DETECT_THRESHOLD            (100)
 #endif
