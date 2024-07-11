@@ -8,6 +8,29 @@
 
 #include "demos/lv_demos.h"
 
+#define SCREEN_WIDTH 1024
+#define SCREEN_HEIGHT 600
+#define BTN_SIZE 100
+
+void create_checkerboard(void) {
+    int rows = SCREEN_HEIGHT / BTN_SIZE;
+    int cols = SCREEN_WIDTH / BTN_SIZE;
+
+    for (int row = 0; row < rows; row++) {
+        for (int col = 0; col < cols; col++) {
+            lv_obj_t *btn = lv_btn_create(lv_scr_act());
+            lv_obj_set_size(btn, BTN_SIZE, BTN_SIZE);
+            lv_obj_align(btn, LV_ALIGN_TOP_LEFT, col * BTN_SIZE, row * BTN_SIZE);
+
+            if ((row + col) % 2 == 0) {
+                lv_obj_set_style_bg_color(btn, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+            } else {
+                lv_obj_set_style_bg_color(btn, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
+        }
+    }
+}
+
 void app_main(void)
 {
     /* Initialize I2C (for touch and audio) */
@@ -34,25 +57,7 @@ void app_main(void)
      */
     bsp_display_lock(0);
 
-#if LV_USE_DEMO_WIDGETS
-    lv_demo_widgets();      /* A widgets example. This is what you get out of the box */
-#endif
-
-#if LV_USE_DEMO_KEYPAD_AND_ENCODER
-    lv_demo_keypad_encoder();   /* Demonstrate the usage of encoder and keyboard */
-#endif
-
-#if LV_USE_DEMO_BENCHMARK
-    lv_demo_benchmark();    /* A demo to measure the performance of LVGL or to compare different settings. */
-#endif
-
-#if LV_USE_DEMO_STRESS
-    lv_demo_stress();       /* A stress test for LVGL. */
-#endif
-
-#if LV_USE_DEMO_MUSIC
-    lv_demo_music();        /* A modern, smartphone-like music player demo. */
-#endif
+    create_checkerboard();
 
     bsp_display_unlock();
 }
