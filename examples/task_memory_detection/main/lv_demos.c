@@ -9,6 +9,7 @@
 #include "demos/lv_demos.h"
 
 #include "esp_log.h"
+#include "esp_memory_utils.h"
 
 #define LOG_MEMORY_SYSTEM_INFO         (1)
 #define LOG_TASK_SYSTEM_INFO           (1)
