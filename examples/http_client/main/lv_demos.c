@@ -176,14 +176,18 @@ void app_main(void)
     ESP_ERROR_CHECK(example_connect());
     ESP_LOGI(TAG, "Connected to AP, begin http example");
 
-#if HTTP_TEST_GET
+    // 配置 HTTP 客户端
     esp_http_client_config_t config = {
+#if HTTP_TEST_GET
         .url = JSON_URL,
+#else
+        .url = POST_URL, // 替换为你的目标 URL
+#endif
         .event_handler = _http_event_handler,
     };
-
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    
+
+#if HTTP_TEST_GET    
     // Set the URL to the JSON URL
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
@@ -194,16 +198,12 @@ void app_main(void)
         ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
     }
 #else
-    esp_http_client_config_t config = {
-        .url = POST_URL, // 替换为你的目标 URL
-        .event_handler = _http_event_handler,
-    };
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-
     // 设置请求方法为 POST
-    const char *post_data = "{\"key\":\"value\"}";
+    const char *post_data = "{\"message\": \"Hello, World!\", \"sender\": \"ESP32\"}";
+
     esp_http_client_set_url(client, POST_URL);
     esp_http_client_set_method(client, HTTP_METHOD_POST);
+    esp_http_client_set_header(client, "Content-Type", "application/json");  // 设置 Content-Type 为 JSON
     esp_http_client_set_post_field(client, post_data, strlen(post_data));
 
     // 执行请求
