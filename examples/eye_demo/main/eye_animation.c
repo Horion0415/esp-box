@@ -564,7 +564,7 @@ void eye_control_task(void *pvParameters) {
         }
         // Short delay to prevent task from consuming too much CPU
         // But short enough to maintain position against any auto-movement
-        vTaskDelay(800 / portTICK_PERIOD_MS);
+        vTaskDelay(600 / portTICK_PERIOD_MS);
     }
 }
 
