@@ -7,14 +7,43 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
-#include "math.h"
 #include "esp_random.h"
-#include "bsp/esp-bsp.h"
+#include "math.h"
 
 #include "eye_animation.h"
-#include "eye_config.h"
+
+// Enable ONE of these #includes -- huge graphics tables for various eyes:
+#if CONFIG_EYE_TYPE_DEFAULT
+#include "defaultEye.h"      // Standard human-ish brown eye -OR-
+#elif CONFIG_EYE_TYPE_DRAGON
+#include "dragonEye.h"     // Slit pupil dragon/demon eye -OR-
+#elif CONFIG_EYE_TYPE_NO_SCLERA
+#include "noScleraEye.h"   // Large iris, no sclera -OR-
+#elif CONFIG_EYE_TYPE_GOAT
+#include "goatEye.h"       // Horizontal pupil goat/Krampus eye -OR-
+#elif CONFIG_EYE_TYPE_NEWT
+#include "newtEye.h"       // Newt eye -OR-
+#elif CONFIG_EYE_TYPE_TERMINATOR
+#include "terminatorEye.h" // Terminator eye!
+#elif CONFIG_EYE_TYPE_CAT
+#include "catEye.h"        // Cartoon cat eye (flat "2D" colors)
+#elif CONFIG_EYE_TYPE_OWL
+#include "owlEye.h"        // Owl eye (tracking disabled)
+#elif CONFIG_EYE_TYPE_NAUGA
+#include "naugaEye.h"      // Nauga eye (tracking disabled)
+#elif CONFIG_EYE_TYPE_DOE
+#include "doeEye.h"        // Cartoon deer eye (tracking disabled)
+#endif
 
 #define MAX_EYES  2
+
+// Blink state definitions
+#define NOBLINK 0       // Not currently blinking
+#define ENBLINK 1       // Eyelid is currently closing
+#define DEBLINK 2       // Eyelid is currently opening
+
+#define IRIS_MIN       90   // Iris size in brightest light (0-1023)
+#define IRIS_MAX      130   // Iris size in darkest light (0-1023)
 
 static const char *TAG = "eye_animation";
 
@@ -32,7 +61,6 @@ static uint64_t last_position_change_time = 0;
 static esp_lcd_panel_handle_t *lcd_panel;
 
 // Pixel buffer
-#define BUFFER_SIZE (BSP_LCD_H_RES * 100)
 static uint16_t *pbuffer = NULL;
 
 // Eye array

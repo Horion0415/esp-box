@@ -20,10 +20,10 @@ static const char *TAG = "animated_eyes_main";
 #define LH_WINK_PIN -1 // Left wink pin (set to -1 for no pin)
 #define RH_WINK_PIN -1 // Right wink pin (set to -1 for no pin)
 
-#define TFT1_CS    5                 // TFT 1 chip select pin
-#define TFT2_CS   -1                 // TFT 2 chip select pin
-#define TFT_1_ROT  1                 // TFT 1 rotation
-#define TFT_2_ROT  1                 // TFT 2 rotation
+#define EYE_1_CS    5                 // TFT 1 chip select pin
+#define EYE_2_CS   -1                 // TFT 2 chip select pin
+#define EYE_1_ROT  1                 // TFT 1 rotation
+#define EYE_2_ROT  1                 // TFT 2 rotation
 #define EYE_1_XPOSITION  0         // x offset of eye 1 image on display
 #define EYE_2_XPOSITION  320 - 128 // x offset of eye 2 image on display
 
@@ -55,12 +55,12 @@ void app_main(void) {
     
 #if (NUM_EYES == 2)
   eyeInfo_t eyeInfo[] = {
-    { LH_WINK_PIN, TFT_1_ROT, EYE_1_XPOSITION }, // Left eye chip select and wink pin, rotation and offset
-    { RH_WINK_PIN, TFT_2_ROT, EYE_2_XPOSITION }, // Right eye chip select and wink pin, rotation and offset
+    { LH_WINK_PIN, EYE_1_ROT, EYE_1_XPOSITION }, // Left eye chip select and wink pin, rotation and offset
+    { RH_WINK_PIN, EYE_2_ROT, EYE_2_XPOSITION }, // Right eye chip select and wink pin, rotation and offset
   };
 #else
   eyeInfo_t eyeInfo[] = {
-    { LH_WINK_PIN, TFT_1_ROT, EYE_1_XPOSITION }, // Eye chip select and wink pin, rotation and offset
+    { LH_WINK_PIN, EYE_1_ROT, EYE_1_XPOSITION }, // Eye chip select and wink pin, rotation and offset
   };
 #endif
 

@@ -1,0 +1,87 @@
+menu "Eye Animation Configuration"
+
+    choice EYE_TYPE
+        prompt "Eye Type"
+        default EYE_TYPE_DEFAULT
+        help
+            Select the type of eye to display.
+
+        config EYE_TYPE_DEFAULT
+            bool "Default Human Eye"
+            help
+                Standard human-ish brown eye.
+
+        config EYE_TYPE_DRAGON
+            bool "Dragon Eye"
+            help
+                Slit pupil dragon/demon eye.
+
+        config EYE_TYPE_NO_SCLERA
+            bool "No Sclera Eye"
+            help
+                Large iris, no sclera.
+
+        config EYE_TYPE_GOAT
+            bool "Goat Eye"
+            help
+                Horizontal pupil goat/Krampus eye.
+
+        config EYE_TYPE_NEWT
+            bool "Newt Eye"
+            help
+                Newt eye.
+
+        config EYE_TYPE_TERMINATOR
+            bool "Terminator Eye"
+            help
+                Terminator eye!
+
+        config EYE_TYPE_CAT
+            bool "Cat Eye"
+            help
+                Cartoon cat eye (flat "2D" colors).
+
+        config EYE_TYPE_OWL
+            bool "Owl Eye"
+            help
+                Owl eye (tracking disabled).
+
+        config EYE_TYPE_NAUGA
+            bool "Nauga Eye"
+            help
+                Nauga eye (tracking disabled).
+
+        config EYE_TYPE_DOE
+            bool "Doe Eye"
+            help
+                Cartoon deer eye (tracking disabled).
+    endchoice
+
+    config SYMMETRICAL_EYELID
+        bool "Use Symmetrical Eyelid"
+        default y
+        help
+            If enabled, uses a simpler "football-shaped" eye that's left/right symmetrical.
+            The default shape includes the caruncle (tear duct), creating distinct left/right eyes.
+
+    config EYE_BUFFER_SIZE
+        int "Eye Buffer Size"
+        default 36000
+        range 1000 100000
+        help
+            Buffer size for eye graphics (in 16-bit pixels).
+            Default is 360*100 = 36000.
+
+    config ENABLE_TRACKING
+        bool "Enable Eyelid Tracking"
+        default y
+        help
+            If enabled, eyelids track pupil position.
+
+    config ENABLE_AUTOBLINK
+        bool "Enable Auto Blink"
+        default y
+        help
+            If enabled, eyes also blink autonomously.
+
+endmenu

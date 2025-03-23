@@ -1,10 +1,21 @@
 #pragma once
 
+#include "sdkconfig.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
+
+// If using a single eye, you might want to enable the next line, which uses a simpler
+// "football-shaped" eye that's left/right symmetrical. The default shape includes
+// the caruncle (tear duct), creating distinct left/right eyes.
+#define SYMMETRICAL_EYELID   (CONFIG_SYMMETRICAL_EYELID)
+
+// Eye config
+#define BUFFER_SIZE          (CONFIG_EYE_BUFFER_SIZE) // Buffer size for eye graphics
+#define TRACKING             (CONFIG_ENABLE_TRACKING)   // If defined, eyelids track pupil
+#define AUTOBLINK            (CONFIG_ENABLE_AUTOBLINK)   // If defined, eyes also blink autonomously
 
 // Eye movement control modes
 typedef enum {
@@ -26,7 +37,7 @@ typedef struct {
   int16_t   xposition;  // x position of eye image
 } eye_t;
 
-// 修改 eyeInfo_t 结构体
+// Eye info structure
 typedef struct {
   int8_t  wink;
   uint8_t rotation;
