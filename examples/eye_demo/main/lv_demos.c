@@ -86,6 +86,7 @@ static esp_err_t init_lcd_panel(int eye_index) {
         .max_transfer_sz = (BSP_LCD_H_RES * CONFIG_BSP_LCD_DRAW_BUF_HEIGHT) * sizeof(uint16_t),
     };
     ESP_ERROR_CHECK(bsp_display_new(&bsp_disp_cfg, &lcd_panel[eye_index], &lcd_io[eye_index]));
+    esp_lcd_panel_disp_on_off(lcd_panel[eye_index], true);
     bsp_display_backlight_on();
     
     return ESP_OK;
@@ -173,6 +174,9 @@ void update_eye(void) {
     newIris = esp_random() % (IRIS_MAX - IRIS_MIN + 1) + IRIS_MIN;
     split(oldIris, newIris, esp_timer_get_time(), 10000000L, IRIS_MAX - IRIS_MIN);
     oldIris = newIris;
+    
+    // uint16_t irisScale = esp_random() % (IRIS_MAX - IRIS_MIN + 1) + IRIS_MIN;
+    // frame(irisScale);
 #endif
 }
 
@@ -245,6 +249,7 @@ void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY, ui
                                          eye[e].xposition + SCREEN_WIDTH, 
                                          screenY + 1, 
                                          pbuffer);
+                //ESP_LOG_BUFFER_HEX(TAG, pbuffer, pixels);
                 pixels = 0;
             }
         }
@@ -261,6 +266,7 @@ void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY, ui
                                  eye[e].xposition + SCREEN_WIDTH, 
                                  SCREEN_HEIGHT, 
                                  pbuffer);
+        //ESP_LOG_BUFFER_HEX(TAG, pbuffer, pixels);
     }
 }
 
@@ -498,10 +504,10 @@ void app_main(void) {
     
     // 记录开始时间
     startTime = esp_timer_get_time();
-    
+
     // 主循环
     while (1) {
         update_eye();
-        vTaskDelay(1); // 给其他任务一些时间
+        vTaskDelay(50 / portTICK_PERIOD_MS); // 给其他任务一些时间
     }
 }
