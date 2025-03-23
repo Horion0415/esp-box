@@ -24,8 +24,8 @@ esp_lcd_panel_handle_t lcd_panel[NUM_EYES];
 esp_lcd_panel_io_handle_t lcd_io[NUM_EYES];
 
 // 像素缓冲区
-#define BUFFER_SIZE 1024
-uint16_t pbuffer[BUFFER_SIZE];
+#define BUFFER_SIZE (BSP_LCD_H_RES * 100)
+uint16_t *pbuffer = NULL;
 
 // 眼睛结构体
 typedef struct {
@@ -95,6 +95,8 @@ static esp_err_t init_lcd_panel(int eye_index) {
 void init_eyes(void) {
     ESP_LOGI(TAG, "初始化眼睛对象");
     
+    pbuffer = (uint16_t *)heap_caps_malloc(BUFFER_SIZE * sizeof(uint16_t), MALLOC_CAP_DMA);
+
     // 根据config.h中的eyeInfo列表初始化眼睛对象
     for (uint8_t e = 0; e < NUM_EYES; e++) {
         ESP_LOGI(TAG, "创建显示器 #%d", e);
@@ -103,26 +105,26 @@ void init_eyes(void) {
         eye[e].blink.state = NOBLINK;
         eye[e].xposition = eyeInfo[e].xposition;
         
-        // gpio_config_t io_conf = {
-        //     .pin_bit_mask = (1ULL << eye[e].tft_cs),
-        //     .mode = GPIO_MODE_OUTPUT,
-        //     .pull_up_en = GPIO_PULLUP_DISABLE,
-        //     .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        //     .intr_type = GPIO_INTR_DISABLE,
-        // };
-        // gpio_config(&io_conf);
-        // gpio_set_level(eye[e].tft_cs, 0);
+        gpio_config_t io_conf = {
+            .pin_bit_mask = (1ULL << eye[e].tft_cs),
+            .mode = GPIO_MODE_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE,
+        };
+        gpio_config(&io_conf);
+        gpio_set_level(eye[e].tft_cs, 0);
         
         // 初始化LCD面板
         init_lcd_panel(e);
         
-        // // 如果定义了单独的眨眼引脚，也设置它
-        // if (eyeInfo[e].wink >= 0) {
-        //     io_conf.pin_bit_mask = (1ULL << eyeInfo[e].wink);
-        //     io_conf.mode = GPIO_MODE_INPUT;
-        //     io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-        //     gpio_config(&io_conf);
-        // }
+        // 如果定义了单独的眨眼引脚，也设置它
+        if (eyeInfo[e].wink >= 0) {
+            io_conf.pin_bit_mask = (1ULL << eyeInfo[e].wink);
+            io_conf.mode = GPIO_MODE_INPUT;
+            io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+            gpio_config(&io_conf);
+        }
     }
     
 #if defined(BLINK_PIN) && (BLINK_PIN >= 0)
@@ -248,7 +250,6 @@ void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY, ui
                                          eye[e].xposition + SCREEN_WIDTH, 
                                          screenY + 1, 
                                          pbuffer);
-                //ESP_LOG_BUFFER_HEX(TAG, pbuffer, pixels);
                 pixels = 0;
             }
         }
@@ -265,7 +266,6 @@ void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY, ui
                                  eye[e].xposition + SCREEN_WIDTH, 
                                  SCREEN_HEIGHT, 
                                  pbuffer);
-        //ESP_LOG_BUFFER_HEX(TAG, pbuffer, pixels);
     }
 }
 
