@@ -40,7 +40,6 @@ static esp_err_t init_lcd_panel(int eye_index) {
     };
     ESP_ERROR_CHECK(bsp_display_new(&bsp_disp_cfg, &lcd_panel[eye_index], &lcd_io[eye_index]));
     esp_lcd_panel_disp_on_off(lcd_panel[eye_index], true);
-    bsp_display_backlight_on();
     
     return ESP_OK;
 }
@@ -52,6 +51,7 @@ void app_main(void) {
     for (int i = 0; i < NUM_EYES; i++) {
         init_lcd_panel(i);
     }
+    bsp_display_backlight_on();
     
 #if (NUM_EYES == 2)
   eyeInfo_t eyeInfo[] = {
