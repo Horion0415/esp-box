@@ -53,7 +53,6 @@ void update_eye(void);
 void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY, uint32_t uT, uint32_t lT);
 void frame(uint16_t iScale);
 void split(int16_t startValue, int16_t endValue, uint64_t startTime, int32_t duration, int16_t range);
-void user_setup(void);
 void user_loop(void);
 int16_t map(int16_t x, int16_t in_min, int16_t in_max, int16_t out_min, int16_t out_max);
 
@@ -175,9 +174,6 @@ void update_eye(void) {
     newIris = esp_random() % (IRIS_MAX - IRIS_MIN + 1) + IRIS_MIN;
     split(oldIris, newIris, esp_timer_get_time(), 10000000L, IRIS_MAX - IRIS_MIN);
     oldIris = newIris;
-    
-    // uint16_t irisScale = esp_random() % (IRIS_MAX - IRIS_MIN + 1) + IRIS_MIN;
-    // frame(irisScale);
 #endif
 }
 
@@ -188,10 +184,7 @@ void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY, ui
     uint16_t p;
     uint32_t d, a;
     uint32_t pixels = 0;
-    
-    // 设置LCD区域 - 准备绘制整个眼睛区域
-    //esp_lcd_panel_draw_bitmap(lcd_panel[e], eye[e].xposition, 0, eye[e].xposition + SCREEN_WIDTH, SCREEN_HEIGHT, NULL);
-    
+        
     scleraXsave = scleraX;
     irisY = scleraY - (SCLERA_HEIGHT - IRIS_HEIGHT) / 2;
     
@@ -482,11 +475,6 @@ int16_t map(int16_t x, int16_t in_min, int16_t in_max, int16_t out_min, int16_t 
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-// 用户设置和循环函数
-void user_setup(void) {
-    // 用户可以在这里添加自定义初始化代码
-}
-
 void user_loop(void) {
     // 用户可以在这里添加自定义循环代码
 }
@@ -497,9 +485,6 @@ void app_main(void) {
     
     // 初始化眼睛
     init_eyes();
-    
-    // 用户设置
-    user_setup();
     
     // 记录开始时间
     startTime = esp_timer_get_time();

@@ -8,14 +8,14 @@
 //#define SYMMETRICAL_EYELID
 
 // 启用以下一个 #include -- 各种眼睛的巨大图形表:
-#include "defaultEye.h"      // 标准人类棕色眼睛 -或-
+//#include "defaultEye.h"      // 标准人类棕色眼睛 -或-
 //#include "dragonEye.h"     // 狭缝瞳孔火龙/恶魔眼 -或-
 //#include "noScleraEye.h"   // 大虹膜，无巩膜 -或-
 //#include "goatEye.h"       // 水平瞳孔山羊/克兰普斯眼 -或-
 //#include "newtEye.h"       // 蝾螈眼 -或-
 //#include "terminatorEye.h" // 终结者眼!
 //#include "catEye.h"        // 卡通猫眼 (平面"2D"颜色)
-//#include "owlEye.h"        // 猫头鹰眼 (禁用跟踪)
+#include "owlEye.h"        // 猫头鹰眼 (禁用跟踪)
 //#include "naugaEye.h"      // 娜迦眼 (禁用跟踪)
 //#include "doeEye.h"        // 卡通鹿眼 (禁用跟踪)
 
