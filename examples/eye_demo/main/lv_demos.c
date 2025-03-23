@@ -12,7 +12,6 @@
 #include "bsp/esp-bsp.h"
 
 #include "eye_animation.h"
-//#include "eye_config.h"
 
 static const char *TAG = "animated_eyes_main";
 
