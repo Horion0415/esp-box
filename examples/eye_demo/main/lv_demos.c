@@ -15,9 +15,21 @@
 
 static const char *TAG = "animated_eyes_main";
 
+#define NUM_EYES 1
+
+#define LH_WINK_PIN -1 // Left wink pin (set to -1 for no pin)
+#define RH_WINK_PIN -1 // Right wink pin (set to -1 for no pin)
+
+#define TFT1_CS    5                 // TFT 1 chip select pin
+#define TFT2_CS   -1                 // TFT 2 chip select pin
+#define TFT_1_ROT  1                 // TFT 1 rotation
+#define TFT_2_ROT  1                 // TFT 2 rotation
+#define EYE_1_XPOSITION  0         // x offset of eye 1 image on display
+#define EYE_2_XPOSITION  320 - 128 // x offset of eye 2 image on display
+
 // LCD panel handles
-static esp_lcd_panel_handle_t lcd_panel[1];
-static esp_lcd_panel_io_handle_t lcd_io[1];
+static esp_lcd_panel_handle_t lcd_panel[NUM_EYES];
+static esp_lcd_panel_io_handle_t lcd_io[NUM_EYES];
 
 // Initialize LCD panel
 static esp_err_t init_lcd_panel(int eye_index) {
@@ -37,19 +49,25 @@ void app_main(void) {
     ESP_LOGI(TAG, "Starting animated eyes demo");
     
     // Initialize LCD panels
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < NUM_EYES; i++) {
         init_lcd_panel(i);
     }
     
+#if (NUM_EYES == 2)
+  eyeInfo_t eyeInfo[] = {
+    { LH_WINK_PIN, TFT_1_ROT, EYE_1_XPOSITION }, // Left eye chip select and wink pin, rotation and offset
+    { RH_WINK_PIN, TFT_2_ROT, EYE_2_XPOSITION }, // Right eye chip select and wink pin, rotation and offset
+  };
+#else
+  eyeInfo_t eyeInfo[] = {
+    { LH_WINK_PIN, TFT_1_ROT, EYE_1_XPOSITION }, // Eye chip select and wink pin, rotation and offset
+  };
+#endif
+
     // Initialize eye animation with our LCD panels
-    eye_animation_init(lcd_panel, lcd_io);
+    eye_animation_init(lcd_panel, eyeInfo, NUM_EYES);
     
-    // Create eye animation task
-    xTaskCreate(eye_animation_task, "eye_animation", 4096, NULL, 5, NULL);
-    
-    // Optional: Create eye control task (demonstrates how to control eye direction)
-    // Comment this out if you want to implement your own control logic
-    xTaskCreate(eye_control_task, "eye_control", 4096, NULL, 4, NULL);
+    eye_animation_start();
     
     // Set eye to fixed position at top-left corner
     eye_set_fixed_position(0, 0);

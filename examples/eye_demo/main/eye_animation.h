@@ -22,13 +22,25 @@ typedef struct {
 
 // Eye structure
 typedef struct {
-  int16_t   tft_cs;     // Chip select pin for each display
   eyeBlink  blink;      // Current blink/wink state
   int16_t   xposition;  // x position of eye image
 } eye_t;
 
+// 修改 eyeInfo_t 结构体
+typedef struct {
+  int8_t  wink;
+  uint8_t rotation;
+  int16_t xposition;
+} eyeInfo_t;
+
 // Initialize eye animation with existing LCD panels
-void eye_animation_init(esp_lcd_panel_handle_t *panels, esp_lcd_panel_io_handle_t *ios);
+void eye_animation_init(esp_lcd_panel_handle_t *panels, eyeInfo_t *eye_configs, uint8_t num_eyes);
+
+// Start eye animation
+void eye_animation_start(void);
+
+// Deinitialize eye animation
+void eye_animation_deinit(void);
 
 // Update eye animation
 void eye_animation_update(void);
@@ -41,12 +53,6 @@ void eye_get_position(int16_t *x, int16_t *y);
 
 // User customizable loop function
 void eye_user_loop(void);
-
-// Eye animation task
-void eye_animation_task(void *pvParameters);
-
-// Example eye control task
-void eye_control_task(void *pvParameters);
 
 // Get eye structures array
 eye_t* eye_get_eyes(void);

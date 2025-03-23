@@ -14,6 +14,8 @@
 #include "eye_animation.h"
 #include "eye_config.h"
 
+#define MAX_EYES  2
+
 static const char *TAG = "eye_animation";
 
 // Global control variables
@@ -28,14 +30,19 @@ static uint64_t last_position_change_time = 0;
 
 // Global variables
 static esp_lcd_panel_handle_t *lcd_panel;
-static esp_lcd_panel_io_handle_t *lcd_io;
 
 // Pixel buffer
 #define BUFFER_SIZE (BSP_LCD_H_RES * 100)
 static uint16_t *pbuffer = NULL;
 
 // Eye array
-static eye_t eye[NUM_EYES];
+static eye_t eye[MAX_EYES];
+
+// Eye count
+static uint8_t num_eyes = 0;
+
+// Eye configurations
+static eyeInfo_t *eye_configs = NULL;
 
 // Eye movement variables
 static bool eyeInMotion = false;
@@ -49,6 +56,10 @@ static uint64_t startTime;  // For FPS indicator
 // Autonomous iris motion uses fractal behavior to simulate both the major
 // reaction and ongoing smaller adjustments
 static uint16_t oldIris = (IRIS_MIN + IRIS_MAX) / 2, newIris;
+
+// Task handles
+static TaskHandle_t animation_task_handle = NULL;
+static TaskHandle_t control_task_handle = NULL;
 
 // Easing function lookup table - for smooth eye movement
 static const uint8_t ease[] = {
@@ -78,13 +89,23 @@ static void process_eye_movement(uint64_t t, int16_t *eyeX, int16_t *eyeY);
 static int16_t map(int16_t x, int16_t in_min, int16_t in_max, int16_t out_min, int16_t out_max);
 
 // Initialize eye animation with existing LCD panels
-void eye_animation_init(esp_lcd_panel_handle_t *panels, esp_lcd_panel_io_handle_t *ios) {
-    ESP_LOGI(TAG, "Initializing eye animation");
+void eye_animation_init(esp_lcd_panel_handle_t *panels, eyeInfo_t *configs, uint8_t eyes_count) {
+    ESP_LOGI(TAG, "Initializing eye animation with %d eyes", eyes_count);
     
     // Store the provided LCD panel and IO handles
     lcd_panel = panels;
-    lcd_io = ios;
+
+    // Store the provided eye configurations
+    num_eyes = eyes_count;
     
+    // Allocate memory for eye configurations
+    eye_configs = (eyeInfo_t *)malloc(num_eyes * sizeof(eyeInfo_t));
+    if (!eye_configs) {
+        ESP_LOGE(TAG, "Failed to allocate eye configs");
+        return;
+    }
+    memcpy(eye_configs, configs, num_eyes * sizeof(eyeInfo_t));
+
     // Allocate pixel buffer
     pbuffer = (uint16_t *)heap_caps_malloc(BUFFER_SIZE * sizeof(uint16_t), MALLOC_CAP_DMA);
     if (!pbuffer) {
@@ -93,44 +114,24 @@ void eye_animation_init(esp_lcd_panel_handle_t *panels, esp_lcd_panel_io_handle_
     }
 
     // Initialize eye structures
-    for (uint8_t e = 0; e < NUM_EYES; e++) {
+    for (uint8_t e = 0; e < num_eyes; e++) {
         ESP_LOGI(TAG, "Initializing eye #%d", e);
         
-        eye[e].tft_cs = eyeInfo[e].select;
         eye[e].blink.state = NOBLINK;
-        eye[e].xposition = eyeInfo[e].xposition;
+        eye[e].xposition = eye_configs[e].xposition;
         
-        // Initialize CS pin
-        gpio_config_t io_conf = {
-            .pin_bit_mask = (1ULL << eye[e].tft_cs),
-            .mode = GPIO_MODE_OUTPUT,
-            .pull_up_en = GPIO_PULLUP_DISABLE,
-            .pull_down_en = GPIO_PULLDOWN_DISABLE,
-            .intr_type = GPIO_INTR_DISABLE,
-        };
-        gpio_config(&io_conf);
-        gpio_set_level(eye[e].tft_cs, 0);
-        
-        // If wink pin is defined, set it up
-        if (eyeInfo[e].wink >= 0) {
-            io_conf.pin_bit_mask = (1ULL << eyeInfo[e].wink);
-            io_conf.mode = GPIO_MODE_INPUT;
-            io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+        // Setup wink pin for all eyes
+        if (eye_configs[e].wink >= 0) {
+            gpio_config_t io_conf = {
+                .pin_bit_mask = (1ULL << eye_configs[e].wink),
+                .mode = GPIO_MODE_INPUT,
+                .pull_up_en = GPIO_PULLUP_DISABLE,
+                .pull_down_en = GPIO_PULLDOWN_DISABLE,
+                .intr_type = GPIO_INTR_DISABLE,
+            };
             gpio_config(&io_conf);
         }
     }
-    
-#if defined(BLINK_PIN) && (BLINK_PIN >= 0)
-    // Setup blink pin for all eyes
-    gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << BLINK_PIN),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&io_conf);
-#endif
 
     // Record start time
     startTime = esp_timer_get_time();
@@ -302,7 +303,7 @@ static void frame(uint16_t iScale) {
     }
     
     // Process each eye in turn
-    if (++eyeIndex >= NUM_EYES) eyeIndex = 0;
+    if (++eyeIndex >= num_eyes) eyeIndex = 0;
     
     // Process eye movement
     process_eye_movement(t, &eyeX, &eyeY);
@@ -317,7 +318,7 @@ static void frame(uint16_t iScale) {
         uint32_t blinkDuration = 36000 + esp_random() % 36000;
         
         // Set blink state for all eyes
-        for (uint8_t e = 0; e < NUM_EYES; e++) {
+        for (uint8_t e = 0; e < num_eyes; e++) {
             if (eye[e].blink.state == NOBLINK) {
                 eye[e].blink.state = ENBLINK;
                 eye[e].blink.startTime = t;
@@ -335,11 +336,8 @@ static void frame(uint16_t iScale) {
         if ((t - eye[eyeIndex].blink.startTime) >= eye[eyeIndex].blink.duration) {
             // Current blink phase complete
             if ((eye[eyeIndex].blink.state == ENBLINK) && (
-#if defined(BLINK_PIN) && (BLINK_PIN >= 0)
-                (gpio_get_level(BLINK_PIN) == 0) ||
-#endif
-                ((eyeInfo[eyeIndex].wink >= 0) &&
-                 gpio_get_level(eyeInfo[eyeIndex].wink) == 0))) {
+                ((eye_configs[eyeIndex].wink >= 0) &&
+                 gpio_get_level(eye_configs[eyeIndex].wink) == 0))) {
                 // If button still pressed, keep eye closed
             } else {
                 // Move to next blink phase or complete blink
@@ -352,23 +350,9 @@ static void frame(uint16_t iScale) {
             }
         }
     } else {
-        // Eye not blinking, check if it should start
-#if defined(BLINK_PIN) && (BLINK_PIN >= 0)
-        if (gpio_get_level(BLINK_PIN) == 0) {
-            // Blink button pressed, start blink
-            uint32_t blinkDuration = 36000 + esp_random() % 36000;
-            for (uint8_t e = 0; e < NUM_EYES; e++) {
-                if (eye[e].blink.state == NOBLINK) {
-                    eye[e].blink.state = ENBLINK;
-                    eye[e].blink.startTime = t;
-                    eye[e].blink.duration = blinkDuration;
-                }
-            }
-        } else
-#endif
         // Check single-eye wink button
-        if ((eyeInfo[eyeIndex].wink >= 0) &&
-            (gpio_get_level(eyeInfo[eyeIndex].wink) == 0)) {
+        if ((eye_configs[eyeIndex].wink >= 0) &&
+            (gpio_get_level(eye_configs[eyeIndex].wink) == 0)) {
             eye[eyeIndex].blink.state = ENBLINK;
             eye[eyeIndex].blink.startTime = t;
             eye[eyeIndex].blink.duration = 45000 + esp_random() % 45000;
@@ -380,7 +364,7 @@ static void frame(uint16_t iScale) {
     eyeY = map(eyeY, 0, 1023, 0, SCLERA_HEIGHT - 128);
     
     // Horizontal position offset so eyes are slightly crossed
-    if (NUM_EYES > 1) {
+    if (num_eyes > 1) {
         if (eyeIndex == 1) eyeX += 4;
         else eyeX -= 4;
     }
@@ -426,7 +410,7 @@ static void frame(uint16_t iScale) {
     draw_eye(eyeIndex, iScale, eyeX, eyeY, n, lThreshold);
     
     // Call user loop function after processing all eyes
-    if (eyeIndex == (NUM_EYES - 1)) {
+    if (eyeIndex == (num_eyes - 1)) {
         eye_user_loop();
     }
 }
@@ -463,7 +447,7 @@ void eye_user_loop(void) {
 }
 
 // Eye animation task
-void eye_animation_task(void *pvParameters) {
+static void eye_animation_task(void *pvParameters) {
     ESP_LOGI(TAG, "Starting eye animation task");
     
     while (1) {
@@ -525,7 +509,7 @@ void eye_set_custom_path(int16_t positions[][2], int num_positions, uint32_t hol
 }
 
 // Eye control task - continuously maintains the desired eye position
-void eye_control_task(void *pvParameters) {
+static void eye_control_task(void *pvParameters) {
     ESP_LOGI(TAG, "Starting eye control task");
     
     while (1) {
@@ -568,6 +552,53 @@ void eye_control_task(void *pvParameters) {
     }
 }
 
+void eye_animation_start(void) 
+{
+    ESP_LOGI(TAG, "Starting eye animation");
+    
+    // Create eye animation task
+    xTaskCreate(eye_animation_task, "eye_animation", 4096, NULL, 5, &animation_task_handle);
+    
+    // Create eye control task
+    xTaskCreate(eye_control_task, "eye_control", 4096, NULL, 4, &control_task_handle);
+    
+    ESP_LOGI(TAG, "Eye animation tasks created");
+}
+
+// Stop eye animation
+static void eye_animation_stop(void) {
+    ESP_LOGI(TAG, "Stopping eye animation");
+    
+    // Stop eye animation task
+    if (animation_task_handle != NULL) {
+        vTaskDelete(animation_task_handle);
+        animation_task_handle = NULL;
+    }
+    
+    // Stop eye control task
+    if (control_task_handle != NULL) {
+        vTaskDelete(control_task_handle);
+        control_task_handle = NULL;
+    }
+    
+    ESP_LOGI(TAG, "Eye animation tasks stopped");
+}
+
+void eye_animation_deinit(void) 
+{
+    eye_animation_stop();
+
+    if (eye_configs) {
+        free(eye_configs);
+        eye_configs = NULL;
+    }
+    
+    if (pbuffer) {
+        free(pbuffer);
+        pbuffer = NULL;
+    }
+}
+
 // Getter functions for accessing internal data
 eye_t* eye_get_eyes(void) {
     return eye;
@@ -578,5 +609,5 @@ uint16_t* eye_get_pixel_buffer(void) {
 }
 
 uint8_t eye_get_count(void) {
-    return NUM_EYES;
+    return num_eyes;
 }
