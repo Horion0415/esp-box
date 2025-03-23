@@ -480,7 +480,6 @@ static void eye_animation_task(void *pvParameters) {
     
     while (1) {
         eye_animation_update();
-        vTaskDelay(50 / portTICK_PERIOD_MS); // Give other tasks some time
     }
 }
 

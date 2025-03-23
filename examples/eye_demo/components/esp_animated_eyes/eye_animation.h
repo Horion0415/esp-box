@@ -10,12 +10,18 @@
 // If using a single eye, you might want to enable the next line, which uses a simpler
 // "football-shaped" eye that's left/right symmetrical. The default shape includes
 // the caruncle (tear duct), creating distinct left/right eyes.
-#define SYMMETRICAL_EYELID   (CONFIG_SYMMETRICAL_EYELID)
+#if CONFIG_SYMMETRICAL_EYELID
+#define SYMMETRICAL_EYELID
+#endif
+#if CONFIG_ENABLE_TRACKING
+#define TRACKING
+#endif
+#if CONFIG_ENABLE_AUTOBLINK
+#define AUTOBLINK
+#endif
 
 // Eye config
 #define BUFFER_SIZE          (CONFIG_EYE_BUFFER_SIZE) // Buffer size for eye graphics
-#define TRACKING             (CONFIG_ENABLE_TRACKING)   // If defined, eyelids track pupil
-#define AUTOBLINK            (CONFIG_ENABLE_AUTOBLINK)   // If defined, eyes also blink autonomously
 
 // Eye movement control modes
 typedef enum {
