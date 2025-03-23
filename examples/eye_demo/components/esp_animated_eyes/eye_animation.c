@@ -462,6 +462,8 @@ static void split(int16_t startValue, int16_t endValue, uint64_t startTime, int3
             frame(v);
         }
     }
+
+    vTaskDelay(10 / portTICK_PERIOD_MS); // Give other tasks some time
 }
 
 // Helper function: map value from one range to another

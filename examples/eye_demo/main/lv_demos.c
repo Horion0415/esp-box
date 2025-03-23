@@ -73,11 +73,11 @@ void app_main(void) {
     eye_set_fixed_position(0, 0);
 
     // After a period of time, switch to automatic movement mode
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
     eye_set_auto_movement();
 
     // After another period, set a custom path
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
     int16_t rectangle_path[4][2] = {
         {200, 200},  // Top-left
         {800, 200},  // Top-right
