@@ -23,7 +23,6 @@ static const char *TAG = "animated_eyes";
 esp_lcd_panel_handle_t lcd_panel[NUM_EYES];
 esp_lcd_panel_io_handle_t lcd_io[NUM_EYES];
 
-
 // 像素缓冲区
 #define BUFFER_SIZE 1024
 uint16_t pbuffer[BUFFER_SIZE];
