@@ -50,5 +50,22 @@ void app_main(void) {
     
     // Optional: Create eye control task (demonstrates how to control eye direction)
     // Comment this out if you want to implement your own control logic
-    //xTaskCreate(eye_control_task, "eye_control", 4096, NULL, 4, NULL);
+    xTaskCreate(eye_control_task, "eye_control", 4096, NULL, 4, NULL);
+    
+    // Set eye to fixed position at top-left corner
+    eye_set_fixed_position(0, 0);
+
+    // After a period of time, switch to automatic movement mode
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    eye_set_auto_movement();
+
+    // After another period, set a custom path
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    int16_t rectangle_path[4][2] = {
+        {200, 200},  // Top-left
+        {800, 200},  // Top-right
+        {800, 800},  // Bottom-right
+        {200, 800}   // Bottom-left
+    };
+    eye_set_custom_path(rectangle_path, 4, 2000); // Hold each position for 2 seconds
 }

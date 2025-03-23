@@ -16,6 +16,16 @@
 
 static const char *TAG = "eye_animation";
 
+// Global control variables
+static eye_movement_mode_t eye_mode = EYE_MODE_AUTO;
+static int16_t fixed_position_x = 512;
+static int16_t fixed_position_y = 512;
+static int16_t target_positions[10][2];  // Array to store custom path points
+static int current_position_index = 0;
+static int total_positions = 0;
+static uint32_t position_hold_time = 1000; // Time to hold at each position (ms)
+static uint64_t last_position_change_time = 0;
+
 // Global variables
 static esp_lcd_panel_handle_t *lcd_panel;
 static esp_lcd_panel_io_handle_t *lcd_io;
@@ -462,30 +472,99 @@ void eye_animation_task(void *pvParameters) {
     }
 }
 
-// Eye control task example
+// Set eye to fixed position
+void eye_set_fixed_position(int16_t x, int16_t y) {
+    // Store the fixed position coordinates
+    fixed_position_x = x;
+    fixed_position_y = y;
+    
+    // Set the mode to fixed
+    eye_mode = EYE_MODE_FIXED;
+    
+    // Initial position set
+    eye_set_position(x, y);
+    
+    ESP_LOGI(TAG, "Eye set to fixed position (%d, %d)", x, y);
+}
+
+// Set eye to auto movement mode
+void eye_set_auto_movement(void) {
+    eye_mode = EYE_MODE_AUTO;
+    eyeInMotion = false;  // This will trigger new random movement
+    eyeMoveStartTime = esp_timer_get_time();
+    eyeMoveDuration = 0;  // Start movement immediately
+    ESP_LOGI(TAG, "Eye set to auto movement mode");
+}
+
+// Set custom path for eye to follow
+void eye_set_custom_path(int16_t positions[][2], int num_positions, uint32_t hold_time_ms) {
+    if (num_positions <= 0 || num_positions > 10) {
+        ESP_LOGE(TAG, "Invalid number of positions (max 10)");
+        return;
+    }
+    
+    // Copy positions to internal array
+    for (int i = 0; i < num_positions; i++) {
+        target_positions[i][0] = positions[i][0];
+        target_positions[i][1] = positions[i][1];
+    }
+    
+    // Set up path parameters
+    total_positions = num_positions;
+    position_hold_time = hold_time_ms;
+    current_position_index = 0;
+    last_position_change_time = esp_timer_get_time() / 1000; // Convert to ms
+    
+    // Set the mode to custom path
+    eye_mode = EYE_MODE_CUSTOM_PATH;
+    
+    // Initial position set
+    eye_set_position(target_positions[0][0], target_positions[0][1]);
+    
+    ESP_LOGI(TAG, "Eye set to custom path with %d positions", num_positions);
+}
+
+// Eye control task - continuously maintains the desired eye position
 void eye_control_task(void *pvParameters) {
     ESP_LOGI(TAG, "Starting eye control task");
     
     while (1) {
-        // Example: Look at top-left corner
-        eye_set_position(200, 200);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        uint64_t current_time = esp_timer_get_time() / 1000; // Convert to ms
         
-        // Example: Look at top-right corner
-        eye_set_position(800, 200);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-        
-        // Example: Look at bottom-right corner
-        eye_set_position(800, 800);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-        
-        // Example: Look at bottom-left corner
-        eye_set_position(200, 800);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-        
-        // Example: Look at center
-        eye_set_position(512, 512);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        switch (eye_mode) {
+            case EYE_MODE_FIXED:
+                // Continuously set the fixed position to ensure it's maintained
+                eye_set_position(fixed_position_x, fixed_position_y);
+                break;
+                
+            case EYE_MODE_AUTO:
+                // In auto mode, we don't need to do anything
+                // The eye_animation_update function handles random movement
+                break;
+                
+            case EYE_MODE_CUSTOM_PATH:
+                // Check if it's time to move to next position
+                if ((current_time - last_position_change_time) >= position_hold_time) {
+                    // Move to next position
+                    current_position_index = (current_position_index + 1) % total_positions;
+                    last_position_change_time = current_time;
+                    
+                    ESP_LOGI(TAG, "Moving to position %d: (%d, %d)", 
+                             current_position_index,
+                             target_positions[current_position_index][0],
+                             target_positions[current_position_index][1]);
+                }
+                
+                // Continuously set the current path position
+                eye_set_position(
+                    target_positions[current_position_index][0],
+                    target_positions[current_position_index][1]
+                );
+                break;
+        }
+        // Short delay to prevent task from consuming too much CPU
+        // But short enough to maintain position against any auto-movement
+        vTaskDelay(800 / portTICK_PERIOD_MS);
     }
 }
 

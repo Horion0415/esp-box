@@ -6,6 +6,13 @@
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
 
+// Eye movement control modes
+typedef enum {
+    EYE_MODE_FIXED,       // Eye stays at fixed position
+    EYE_MODE_AUTO,        // Eye moves automatically (random)
+    EYE_MODE_CUSTOM_PATH  // Eye follows custom path
+} eye_movement_mode_t;
+
 // Eye blink structure
 typedef struct {
   uint8_t  state;       // NOBLINK/ENBLINK/DEBLINK
@@ -49,3 +56,12 @@ uint16_t* eye_get_pixel_buffer(void);
 
 // Get number of eyes
 uint8_t eye_get_count(void);
+
+// Set eye to fixed position
+void eye_set_fixed_position(int16_t x, int16_t y);
+
+// Set eye to auto movement mode
+void eye_set_auto_movement(void);
+
+// Set custom path for eye to follow
+void eye_set_custom_path(int16_t positions[][2], int num_positions, uint32_t hold_time_ms);
