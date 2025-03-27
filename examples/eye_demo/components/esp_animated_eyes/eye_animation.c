@@ -43,9 +43,6 @@
 #define ENBLINK 1       // Eyelid is currently closing
 #define DEBLINK 2       // Eyelid is currently opening
 
-#define IRIS_MIN       90   // Iris size in brightest light (0-1023)
-#define IRIS_MAX      130   // Iris size in darkest light (0-1023)
-
 #define EYE_MOVE_DURATION 500000  // Default eye movement duration in microseconds
 
 static const char *TAG = "eye_animation";
