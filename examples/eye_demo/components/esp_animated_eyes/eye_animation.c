@@ -345,21 +345,6 @@ static void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scle
             uint16_t color = (p >> 8) | (p << 8); // Swap byte order
             
             pbuffer[pixels++] = color;
-            
-            // Send data when buffer is full
-            if (pixels >= BUFFER_SIZE) {
-                // Calculate current row
-                uint16_t currentRow = screenY - (pixels / SCREEN_WIDTH) + 1;
-                
-                // Send pixel data to LCD
-                esp_lcd_panel_draw_bitmap(lcd_panel[e], 
-                                         eye[e].xposition, 
-                                         currentRow, 
-                                         eye[e].xposition + SCREEN_WIDTH, 
-                                         screenY + 1, 
-                                         pbuffer);
-                pixels = 0;
-            }
         }
     }
     
