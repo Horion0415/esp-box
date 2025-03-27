@@ -46,7 +46,7 @@
 #define IRIS_MIN       90   // Iris size in brightest light (0-1023)
 #define IRIS_MAX      130   // Iris size in darkest light (0-1023)
 
-#define EYE_MOVE_DURATION 500000  
+#define EYE_MOVE_DURATION 500000  // Default eye movement duration in microseconds
 
 static const char *TAG = "eye_animation";
 
@@ -113,8 +113,15 @@ static void frame(uint16_t iScale);
 static void split(int16_t startValue, int16_t endValue, uint64_t startTime, int32_t duration, int16_t range);
 static void process_eye_movement(uint64_t t, int16_t *eyeX, int16_t *eyeY);
 static int16_t map(int16_t x, int16_t in_min, int16_t in_max, int16_t out_min, int16_t out_max);
+static void eye_animation_task(void *pvParameters);
 
-// Initialize eye animation with existing LCD panels
+/**
+ * @brief Initialize eye animation with existing LCD panels
+ * 
+ * @param panels Array of LCD panel handles
+ * @param configs Array of eye configurations
+ * @param eyes_count Number of eyes to initialize
+ */
 void eye_animation_init(esp_lcd_panel_handle_t *panels, eyeInfo_t *configs, uint8_t eyes_count) {
     ESP_LOGI(TAG, "Initializing eye animation with %d eyes", eyes_count);
     
@@ -163,25 +170,36 @@ void eye_animation_init(esp_lcd_panel_handle_t *panels, eyeInfo_t *configs, uint
     startTime = esp_timer_get_time();
 }
 
-// Update eye animation
-void eye_animation_update(void) {
+/**
+ * @brief Update eye animation - generates new iris size
+ */
+static void eye_animation_update(void) {
     newIris = esp_random() % (IRIS_MAX - IRIS_MIN + 1) + IRIS_MIN;
     split(oldIris, newIris, esp_timer_get_time(), 10000000L, IRIS_MAX - IRIS_MIN);
     oldIris = newIris;
 }
 
-void eye_set_position(int16_t x, int16_t y) 
-{
+/**
+ * @brief Set eye position to a fixed coordinate
+ * 
+ * @param x X coordinate (0-1023)
+ * @param y Y coordinate (0-1023)
+ */
+void eye_set_position(int16_t x, int16_t y) {
+    // Clamp coordinates to valid range
     x = (x < 0) ? 0 : ((x > 1023) ? 1023 : x);
     y = (y < 0) ? 0 : ((y > 1023) ? 1023 : y);
     
+    // Set mode to fixed position
     eye_mode = EYE_MODE_FIXED;
     fixed_position_x = x;
     fixed_position_y = y;
     
+    // Set target position for smooth movement
     eyeNewX = x;
     eyeNewY = y;
     
+    // Start movement animation
     eyeInMotion = true;
     eyeMoveStartTime = esp_timer_get_time();
     eyeMoveDuration = EYE_MOVE_DURATION; 
@@ -189,28 +207,39 @@ void eye_set_position(int16_t x, int16_t y)
     ESP_LOGI(TAG, "Eye position set to fixed position (%d, %d)", x, y);
 }
 
-// Get current eye position
+/**
+ * @brief Get current eye position
+ * 
+ * @param x Pointer to store X coordinate
+ * @param y Pointer to store Y coordinate
+ */
 void eye_get_position(int16_t *x, int16_t *y) {
     if (x) *x = eyeOldX;
     if (y) *y = eyeOldY;
 }
 
-// Process eye movement
+/**
+ * @brief Process eye movement based on current mode
+ * 
+ * @param t Current time in microseconds
+ * @param eyeX Pointer to store calculated X position
+ * @param eyeY Pointer to store calculated Y position
+ */
 static void process_eye_movement(uint64_t t, int16_t *eyeX, int16_t *eyeY) {
     if (eye_mode == EYE_MODE_FIXED) {
         *eyeX = fixed_position_x;
         *eyeY = fixed_position_y;
         
-        // 如果眼睛正在移动到固定位置，继续移动动画
+        // If eye is moving to fixed position, continue animation
         if (eyeInMotion) {
             int32_t dt = t - eyeMoveStartTime;
             if (dt >= eyeMoveDuration) {
-                // 移动完成
+                // Movement complete
                 eyeInMotion = false;
                 eyeOldX = eyeNewX = fixed_position_x;
                 eyeOldY = eyeNewY = fixed_position_y;
             } else {
-                // 计算当前移动位置（使用缓动函数）
+                // Calculate current position (using easing function)
                 int16_t e = ease[255 * dt / eyeMoveDuration] + 1;
                 *eyeX = eyeOldX + (((eyeNewX - eyeOldX) * e) / 256);
                 *eyeY = eyeOldY + (((eyeNewY - eyeOldY) * e) / 256);
@@ -219,48 +248,57 @@ static void process_eye_movement(uint64_t t, int16_t *eyeX, int16_t *eyeY) {
         return;
     }
     
-    // 以下是自动模式的处理逻辑
+    // Auto mode processing logic
     int32_t dt = t - eyeMoveStartTime;
     if (eyeInMotion) {
-        // 眼睛正在移动
+        // Eye is currently moving
         if (dt >= eyeMoveDuration) {
-            // 移动完成，设置新的休息期
+            // Movement complete, set new rest period
             eyeInMotion = false;
-            eyeMoveDuration = esp_random() % 3000000; // 随机休息时间
+            eyeMoveDuration = esp_random() % 3000000; // Random rest time
             eyeMoveStartTime = t;
             *eyeX = eyeOldX = eyeNewX;
             *eyeY = eyeOldY = eyeNewY;
         } else {
-            // 计算当前移动位置（使用缓动函数）
+            // Calculate current position (using easing function)
             int16_t e = ease[255 * dt / eyeMoveDuration] + 1;
             *eyeX = eyeOldX + (((eyeNewX - eyeOldX) * e) / 256);
             *eyeY = eyeOldY + (((eyeNewY - eyeOldY) * e) / 256);
         }
     } else {
-        // 眼睛处于休息状态
+        // Eye is in rest state
         *eyeX = eyeOldX;
         *eyeY = eyeOldY;
         
         if (dt > eyeMoveDuration) {
-            // 休息期结束，计算新的目标位置
+            // Rest period over, calculate new target position
             int16_t dx, dy;
             uint32_t d;
             do {
-                // 生成随机目标位置，但确保在有效圆内
+                // Generate random target position, ensuring it's within valid circle
                 eyeNewX = esp_random() % 1024;
                 eyeNewY = esp_random() % 1024;
                 dx = (eyeNewX * 2) - 1023;
                 dy = (eyeNewY * 2) - 1023;
-            } while ((d = (dx * dx + dy * dy)) > (1023 * 1023)); // 确保在圆内
+            } while ((d = (dx * dx + dy * dy)) > (1023 * 1023)); // Ensure within circle
             
-            eyeMoveDuration = 72000 + esp_random() % 72000; // 随机移动时间
+            eyeMoveDuration = 72000 + esp_random() % 72000; // Random movement time
             eyeMoveStartTime = t;
             eyeInMotion = true;
         }
     }
 }
 
-// Draw eye function
+/**
+ * @brief Draw a single eye
+ * 
+ * @param e Eye index
+ * @param iScale Iris scale
+ * @param scleraX Sclera X position
+ * @param scleraY Sclera Y position
+ * @param uT Upper eyelid threshold
+ * @param lT Lower eyelid threshold
+ */
 static void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scleraY, uint32_t uT, uint32_t lT) {
     uint32_t screenX, screenY, scleraXsave;
     int32_t irisX, irisY;
@@ -342,7 +380,11 @@ static void draw_eye(uint8_t e, uint32_t iScale, uint32_t scleraX, uint32_t scle
     }
 }
 
-// Frame processing function
+/**
+ * @brief Process a single animation frame
+ * 
+ * @param iScale Iris scale value
+ */
 static void frame(uint16_t iScale) {
     static uint32_t frames = 0;
     static uint8_t eyeIndex = 0;
@@ -468,7 +510,15 @@ static void frame(uint16_t iScale) {
     }
 }
 
-// Split function for iris animation
+/**
+ * @brief Split function for iris animation using recursive fractal behavior
+ * 
+ * @param startValue Starting iris value
+ * @param endValue Target iris value
+ * @param startTime Start time in microseconds
+ * @param duration Duration of transition
+ * @param range Range for midpoint calculation
+ */
 static void split(int16_t startValue, int16_t endValue, uint64_t startTime, int32_t duration, int16_t range) {
     if (range >= 8) {
         range /= 2;
@@ -491,17 +541,37 @@ static void split(int16_t startValue, int16_t endValue, uint64_t startTime, int3
     vTaskDelay(10 / portTICK_PERIOD_MS); // Give other tasks some time
 }
 
-// Helper function: map value from one range to another
+/**
+ * @brief Map value from one range to another
+ * 
+ * @param x Input value
+ * @param in_min Input range minimum
+ * @param in_max Input range maximum
+ * @param out_min Output range minimum
+ * @param out_max Output range maximum
+ * @return int16_t Mapped value
+ */
 static int16_t map(int16_t x, int16_t in_min, int16_t in_max, int16_t out_min, int16_t out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-// User loop function - can be customized by the user
+/**
+ * @brief User customizable loop function
+ * This can be implemented by the user to add custom behavior
+ */
 void eye_user_loop(void) {
     // User can add custom loop code here
 }
 
-// Eye animation task
+/**
+ * @brief Eye animation task function
+ * 
+ * @param pvParameters Task parameters
+ * 
+ * @brief Eye animation task function
+ * 
+ * @param pvParameters Task parameters
+ */
 static void eye_animation_task(void *pvParameters) {
     ESP_LOGI(TAG, "Starting eye animation task");
     
@@ -510,7 +580,9 @@ static void eye_animation_task(void *pvParameters) {
     }
 }
 
-// 修改 eye_set_auto_movement 函数
+/**
+ * @brief Set eye to automatic movement mode
+ */
 void eye_set_auto_movement(void) {
     eye_mode = EYE_MODE_AUTO;
     eyeInMotion = false;
@@ -519,8 +591,11 @@ void eye_set_auto_movement(void) {
     ESP_LOGI(TAG, "Eye set to auto movement mode");
 }
 
-void eye_animation_start(void) 
-{
+/**
+ * @brief Start eye animation
+ * Creates and starts the animation task
+ */
+void eye_animation_start(void) {
     ESP_LOGI(TAG, "Starting eye animation");
     
     xTaskCreate(eye_animation_task, "eye_animation", 4096, NULL, 5, &animation_task_handle);
@@ -528,7 +603,10 @@ void eye_animation_start(void)
     ESP_LOGI(TAG, "Eye animation task created");
 }
 
-// Stop eye animation
+/**
+ * @brief Stop eye animation
+ * Stops all animation tasks
+ */
 void eye_animation_stop(void) {
     ESP_LOGI(TAG, "Stopping eye animation");
     
@@ -547,8 +625,11 @@ void eye_animation_stop(void) {
     ESP_LOGI(TAG, "Eye animation tasks stopped");
 }
 
-void eye_animation_deinit(void) 
-{
+/**
+ * @brief Deinitialize eye animation
+ * Frees all allocated resources
+ */
+void eye_animation_deinit(void) {
     if (animation_task_handle != NULL) {
         vTaskDelete(animation_task_handle);
         animation_task_handle = NULL;
@@ -565,15 +646,29 @@ void eye_animation_deinit(void)
     }
 }
 
-// Getter functions for accessing internal data
+/**
+ * @brief Get eye structures array
+ * 
+ * @return eye_t* Pointer to eye structures array
+ */
 eye_t* eye_get_eyes(void) {
     return eye;
 }
 
+/**
+ * @brief Get pixel buffer
+ * 
+ * @return uint16_t* Pointer to pixel buffer
+ */
 uint16_t* eye_get_pixel_buffer(void) {
     return pbuffer;
 }
 
+/**
+ * @brief Get number of eyes
+ * 
+ * @return uint8_t Number of eyes
+ */
 uint8_t eye_get_count(void) {
     return num_eyes;
 }

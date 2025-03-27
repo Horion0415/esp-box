@@ -60,9 +60,6 @@ void eye_animation_stop(void);
 // Deinitialize eye animation
 void eye_animation_deinit(void);
 
-// Update eye animation
-void eye_animation_update(void);
-
 // Set eye position (coordinates range: 0-1023)
 void eye_set_position(int16_t x, int16_t y);
 
@@ -83,6 +80,3 @@ uint8_t eye_get_count(void);
 
 // Set eye to auto movement mode
 void eye_set_auto_movement(void);
-
-// Set custom path for eye to follow
-void eye_set_custom_path(int16_t positions[][2], int num_positions, uint32_t hold_time_ms);

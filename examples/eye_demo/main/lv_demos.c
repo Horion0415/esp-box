@@ -70,26 +70,24 @@ void app_main(void) {
     
     eye_animation_start();
     
-    // 随机眼睛移动测试
-    int16_t current_x = 512;  // 从中心开始
+    // Random eye movement test
+    int16_t current_x = 512;  // Start from center
     int16_t current_y = 512;
-    int16_t target_x = 512;
-    int16_t target_y = 512;
     
-    // 设置初始位置
+    // Set initial position
     eye_set_position(current_x, current_y);
 
     while (1) {        
-        // 生成新的随机目标位置 (0-1023)
-        target_x = esp_random() % 1024;
-        target_y = esp_random() % 1024;
+        // Generate new random target position (0-1023)
+        current_x = esp_random() % 1024;
+        current_y = esp_random() % 1024;
           
-        ESP_LOGI(TAG, "New target position: (%d, %d)", target_x, target_y);
+        ESP_LOGI(TAG, "New target position: (%d, %d)", current_x, current_y);
         
-        // 设置眼睛位置
-        eye_set_position(target_x, target_y);
+        // Set eye position
+        eye_set_position(current_x, current_y);
         
-        // 短暂延时以控制移动速度
+        // Short delay to control movement speed
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
