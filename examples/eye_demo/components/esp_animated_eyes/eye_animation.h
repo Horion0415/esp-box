@@ -66,6 +66,9 @@ void eye_set_position(int16_t x, int16_t y);
 // Get current eye position
 void eye_get_position(int16_t *x, int16_t *y);
 
+// Trigger eye blink
+bool eye_trigger_blink(int8_t eye_index, uint32_t duration_ms);
+
 // User customizable loop function
 void eye_user_loop(void);
 

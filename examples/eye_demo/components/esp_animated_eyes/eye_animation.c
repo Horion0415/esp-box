@@ -574,6 +574,45 @@ void eye_set_auto_movement(void) {
 }
 
 /**
+ * @brief Trigger eye blink
+ * 
+ * @param eye_index Eye index, if -1 then all eyes will blink simultaneously
+ * @param duration_ms Blink duration in milliseconds, if 0 then random time will be used
+ * @return true If blink was successfully triggered
+ * @return false If eye is already blinking
+ */
+bool eye_trigger_blink(int8_t eye_index, uint32_t duration_ms) {
+    uint64_t t = esp_timer_get_time();
+    uint32_t duration = (duration_ms > 0) ? duration_ms * 1000 : (45000 + esp_random() % 45000);
+    bool success = false;
+    
+    if (eye_index < 0) {
+        // Trigger all eyes to blink
+        for (uint8_t e = 0; e < num_eyes; e++) {
+            if (eye[e].blink.state == NOBLINK) {
+                eye[e].blink.state = ENBLINK;
+                eye[e].blink.startTime = t;
+                eye[e].blink.duration = duration;
+                success = true;
+            }
+        }
+    } else if (eye_index < num_eyes) {
+        // Trigger specific eye to blink
+        if (eye[eye_index].blink.state == NOBLINK) {
+            eye[eye_index].blink.state = ENBLINK;
+            eye[eye_index].blink.startTime = t;
+            eye[eye_index].blink.duration = duration;
+            success = true;
+        }
+    }
+    
+    ESP_LOGI(TAG, "Trigger blink: eye=%d, duration=%u ms, result=%s", 
+             eye_index, duration_ms, success ? "success" : "failed");
+    
+    return success;
+}
+
+/**
  * @brief Start eye animation
  * Creates and starts the animation task
  */
