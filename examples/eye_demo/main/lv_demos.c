@@ -88,6 +88,6 @@ void app_main(void) {
         eye_set_position(current_x, current_y);
         
         // Short delay to control movement speed
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(200 / portTICK_PERIOD_MS);
     }
 }
