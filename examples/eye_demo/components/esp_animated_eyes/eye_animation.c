@@ -8,6 +8,7 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "esp_random.h"
+#include "esp_lcd_panel_ops.h"
 #include "math.h"
 
 #include "eye_animation.h"
@@ -45,17 +46,14 @@
 #define IRIS_MIN       90   // Iris size in brightest light (0-1023)
 #define IRIS_MAX      130   // Iris size in darkest light (0-1023)
 
+#define EYE_MOVE_DURATION 500000  
+
 static const char *TAG = "eye_animation";
 
 // Global control variables
 static eye_movement_mode_t eye_mode = EYE_MODE_AUTO;
 static int16_t fixed_position_x = 512;
 static int16_t fixed_position_y = 512;
-static int16_t target_positions[10][2];  // Array to store custom path points
-static int current_position_index = 0;
-static int total_positions = 0;
-static uint32_t position_hold_time = 1000; // Time to hold at each position (ms)
-static uint64_t last_position_change_time = 0;
 
 // Global variables
 static esp_lcd_panel_handle_t *lcd_panel;
@@ -172,20 +170,23 @@ void eye_animation_update(void) {
     oldIris = newIris;
 }
 
-// Set eye position (coordinates range: 0-1023)
-void eye_set_position(int16_t x, int16_t y) {
-    // Limit input values to 0-1023 range
+void eye_set_position(int16_t x, int16_t y) 
+{
     x = (x < 0) ? 0 : ((x > 1023) ? 1023 : x);
     y = (y < 0) ? 0 : ((y > 1023) ? 1023 : y);
     
-    // Set eye position
+    eye_mode = EYE_MODE_FIXED;
+    fixed_position_x = x;
+    fixed_position_y = y;
+    
     eyeNewX = x;
     eyeNewY = y;
     
-    // Force eye to immediately start moving to new position
     eyeInMotion = true;
     eyeMoveStartTime = esp_timer_get_time();
-    eyeMoveDuration = 500000; // 0.5 seconds to move to specified position
+    eyeMoveDuration = EYE_MOVE_DURATION; 
+    
+    ESP_LOGI(TAG, "Eye position set to fixed position (%d, %d)", x, y);
 }
 
 // Get current eye position
@@ -196,39 +197,63 @@ void eye_get_position(int16_t *x, int16_t *y) {
 
 // Process eye movement
 static void process_eye_movement(uint64_t t, int16_t *eyeX, int16_t *eyeY) {
+    if (eye_mode == EYE_MODE_FIXED) {
+        *eyeX = fixed_position_x;
+        *eyeY = fixed_position_y;
+        
+        // 如果眼睛正在移动到固定位置，继续移动动画
+        if (eyeInMotion) {
+            int32_t dt = t - eyeMoveStartTime;
+            if (dt >= eyeMoveDuration) {
+                // 移动完成
+                eyeInMotion = false;
+                eyeOldX = eyeNewX = fixed_position_x;
+                eyeOldY = eyeNewY = fixed_position_y;
+            } else {
+                // 计算当前移动位置（使用缓动函数）
+                int16_t e = ease[255 * dt / eyeMoveDuration] + 1;
+                *eyeX = eyeOldX + (((eyeNewX - eyeOldX) * e) / 256);
+                *eyeY = eyeOldY + (((eyeNewY - eyeOldY) * e) / 256);
+            }
+        }
+        return;
+    }
+    
+    // 以下是自动模式的处理逻辑
     int32_t dt = t - eyeMoveStartTime;
     if (eyeInMotion) {
-        // Eye is in motion
+        // 眼睛正在移动
         if (dt >= eyeMoveDuration) {
-            // Movement complete, set new rest period
+            // 移动完成，设置新的休息期
             eyeInMotion = false;
-            eyeMoveDuration = esp_random() % 3000000; // Random rest time
+            eyeMoveDuration = esp_random() % 3000000; // 随机休息时间
             eyeMoveStartTime = t;
             *eyeX = eyeOldX = eyeNewX;
             *eyeY = eyeOldY = eyeNewY;
         } else {
-            // Calculate current movement position (using easing function)
+            // 计算当前移动位置（使用缓动函数）
             int16_t e = ease[255 * dt / eyeMoveDuration] + 1;
             *eyeX = eyeOldX + (((eyeNewX - eyeOldX) * e) / 256);
             *eyeY = eyeOldY + (((eyeNewY - eyeOldY) * e) / 256);
         }
     } else {
-        // Eye is at rest
+        // 眼睛处于休息状态
         *eyeX = eyeOldX;
         *eyeY = eyeOldY;
+        
         if (dt > eyeMoveDuration) {
-            // Rest period over, calculate new target position
+            // 休息期结束，计算新的目标位置
             int16_t dx, dy;
             uint32_t d;
             do {
-                // Generate random target position, but ensure within valid circle
+                // 生成随机目标位置，但确保在有效圆内
                 eyeNewX = esp_random() % 1024;
                 eyeNewY = esp_random() % 1024;
                 dx = (eyeNewX * 2) - 1023;
                 dy = (eyeNewY * 2) - 1023;
-            } while ((d = (dx * dx + dy * dy)) > (1023 * 1023)); // Ensure within circle
+            } while ((d = (dx * dx + dy * dy)) > (1023 * 1023)); // 确保在圆内
             
-            eyeMoveDuration = 72000 + esp_random() % 72000; // Random movement time
+            eyeMoveDuration = 72000 + esp_random() % 72000; // 随机移动时间
             eyeMoveStartTime = t;
             eyeInMotion = true;
         }
@@ -485,117 +510,26 @@ static void eye_animation_task(void *pvParameters) {
     }
 }
 
-// Set eye to fixed position
-void eye_set_fixed_position(int16_t x, int16_t y) {
-    // Store the fixed position coordinates
-    fixed_position_x = x;
-    fixed_position_y = y;
-    
-    // Set the mode to fixed
-    eye_mode = EYE_MODE_FIXED;
-    
-    // Initial position set
-    eye_set_position(x, y);
-    
-    ESP_LOGI(TAG, "Eye set to fixed position (%d, %d)", x, y);
-}
-
-// Set eye to auto movement mode
+// 修改 eye_set_auto_movement 函数
 void eye_set_auto_movement(void) {
     eye_mode = EYE_MODE_AUTO;
-    eyeInMotion = false;  // This will trigger new random movement
+    eyeInMotion = false;
     eyeMoveStartTime = esp_timer_get_time();
-    eyeMoveDuration = 0;  // Start movement immediately
+    eyeMoveDuration = 0;  
     ESP_LOGI(TAG, "Eye set to auto movement mode");
-}
-
-// Set custom path for eye to follow
-void eye_set_custom_path(int16_t positions[][2], int num_positions, uint32_t hold_time_ms) {
-    if (num_positions <= 0 || num_positions > 10) {
-        ESP_LOGE(TAG, "Invalid number of positions (max 10)");
-        return;
-    }
-    
-    // Copy positions to internal array
-    for (int i = 0; i < num_positions; i++) {
-        target_positions[i][0] = positions[i][0];
-        target_positions[i][1] = positions[i][1];
-    }
-    
-    // Set up path parameters
-    total_positions = num_positions;
-    position_hold_time = hold_time_ms;
-    current_position_index = 0;
-    last_position_change_time = esp_timer_get_time() / 1000; // Convert to ms
-    
-    // Set the mode to custom path
-    eye_mode = EYE_MODE_CUSTOM_PATH;
-    
-    // Initial position set
-    eye_set_position(target_positions[0][0], target_positions[0][1]);
-    
-    ESP_LOGI(TAG, "Eye set to custom path with %d positions", num_positions);
-}
-
-// Eye control task - continuously maintains the desired eye position
-static void eye_control_task(void *pvParameters) {
-    ESP_LOGI(TAG, "Starting eye control task");
-    
-    while (1) {
-        uint64_t current_time = esp_timer_get_time() / 1000; // Convert to ms
-        
-        switch (eye_mode) {
-            case EYE_MODE_FIXED:
-                // Continuously set the fixed position to ensure it's maintained
-                eye_set_position(fixed_position_x, fixed_position_y);
-                break;
-                
-            case EYE_MODE_AUTO:
-                // In auto mode, we don't need to do anything
-                // The eye_animation_update function handles random movement
-                break;
-                
-            case EYE_MODE_CUSTOM_PATH:
-                // Check if it's time to move to next position
-                if ((current_time - last_position_change_time) >= position_hold_time) {
-                    // Move to next position
-                    current_position_index = (current_position_index + 1) % total_positions;
-                    last_position_change_time = current_time;
-                    
-                    ESP_LOGI(TAG, "Moving to position %d: (%d, %d)", 
-                             current_position_index,
-                             target_positions[current_position_index][0],
-                             target_positions[current_position_index][1]);
-                }
-                
-                // Continuously set the current path position
-                eye_set_position(
-                    target_positions[current_position_index][0],
-                    target_positions[current_position_index][1]
-                );
-                break;
-        }
-        // Short delay to prevent task from consuming too much CPU
-        // But short enough to maintain position against any auto-movement
-        vTaskDelay(600 / portTICK_PERIOD_MS);
-    }
 }
 
 void eye_animation_start(void) 
 {
     ESP_LOGI(TAG, "Starting eye animation");
     
-    // Create eye animation task
     xTaskCreate(eye_animation_task, "eye_animation", 4096, NULL, 5, &animation_task_handle);
     
-    // Create eye control task
-    xTaskCreate(eye_control_task, "eye_control", 4096, NULL, 4, &control_task_handle);
-    
-    ESP_LOGI(TAG, "Eye animation tasks created");
+    ESP_LOGI(TAG, "Eye animation task created");
 }
 
 // Stop eye animation
-static void eye_animation_stop(void) {
+void eye_animation_stop(void) {
     ESP_LOGI(TAG, "Stopping eye animation");
     
     // Stop eye animation task
@@ -615,8 +549,11 @@ static void eye_animation_stop(void) {
 
 void eye_animation_deinit(void) 
 {
-    eye_animation_stop();
-
+    if (animation_task_handle != NULL) {
+        vTaskDelete(animation_task_handle);
+        animation_task_handle = NULL;
+    }
+    
     if (eye_configs) {
         free(eye_configs);
         eye_configs = NULL;

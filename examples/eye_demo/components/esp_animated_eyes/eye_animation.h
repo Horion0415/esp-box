@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_lcd_panel_io.h"
-#include "esp_lcd_panel_vendor.h"
-#include "esp_lcd_panel_ops.h"
 
 // If using a single eye, you might want to enable the next line, which uses a simpler
 // "football-shaped" eye that's left/right symmetrical. The default shape includes
@@ -56,6 +54,9 @@ void eye_animation_init(esp_lcd_panel_handle_t *panels, eyeInfo_t *eye_configs, 
 // Start eye animation
 void eye_animation_start(void);
 
+// Stop eye animation
+void eye_animation_stop(void);
+
 // Deinitialize eye animation
 void eye_animation_deinit(void);
 
@@ -79,9 +80,6 @@ uint16_t* eye_get_pixel_buffer(void);
 
 // Get number of eyes
 uint8_t eye_get_count(void);
-
-// Set eye to fixed position
-void eye_set_fixed_position(int16_t x, int16_t y);
 
 // Set eye to auto movement mode
 void eye_set_auto_movement(void);

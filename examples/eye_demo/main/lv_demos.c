@@ -9,6 +9,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
+#include "esp_random.h"
 #include "bsp/esp-bsp.h"
 
 #include "eye_animation.h"
@@ -69,20 +70,26 @@ void app_main(void) {
     
     eye_animation_start();
     
-    // Set eye to fixed position at top-left corner
-    eye_set_fixed_position(0, 0);
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
-
-    // After a period of time, switch to automatic movement mode
-    eye_set_auto_movement();
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
+    // 随机眼睛移动测试
+    int16_t current_x = 512;  // 从中心开始
+    int16_t current_y = 512;
+    int16_t target_x = 512;
+    int16_t target_y = 512;
     
-    // After another period, set a custom path  
-    int16_t rectangle_path[4][2] = {
-        {200, 200},  // Top-left
-        {800, 200},  // Top-right
-        {800, 800},  // Bottom-right
-        {200, 800}   // Bottom-left
-    };
-    eye_set_custom_path(rectangle_path, 4, 2000); // Hold each position for 2 seconds
+    // 设置初始位置
+    eye_set_position(current_x, current_y);
+
+    while (1) {        
+        // 生成新的随机目标位置 (0-1023)
+        target_x = esp_random() % 1024;
+        target_y = esp_random() % 1024;
+          
+        ESP_LOGI(TAG, "New target position: (%d, %d)", target_x, target_y);
+        
+        // 设置眼睛位置
+        eye_set_position(target_x, target_y);
+        
+        // 短暂延时以控制移动速度
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
 }
