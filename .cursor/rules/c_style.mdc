@@ -1,6 +1,6 @@
 ---
 description: 
-globs: *.c
+globs: *.c,*.h
 alwaysApply: false
 ---
 # ESP-IDF C 语言规则
