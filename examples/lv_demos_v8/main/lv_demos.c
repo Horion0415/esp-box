@@ -9,6 +9,7 @@
 #include "demos/lv_demos.h"
 
 #include "esp_log.h"
+#include "lvgl.h"
 
 void ui_setting_screen_init(void)
 {
@@ -138,6 +139,12 @@ void ui_setting_screen_init(void)
     lv_obj_set_style_pad_all(ui_ListItem18, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
 }
 
+static void fps_timer_cb(lv_timer_t * t)
+{
+    uint32_t fps = lv_refr_get_fps_avg();
+    ESP_LOGI("FPS", "Avg FPS: %lu", fps);
+}
+
 void app_main(void)
 {
     /* Initialize I2C (for touch and audio) */
@@ -161,4 +168,7 @@ void app_main(void)
     ui_setting_screen_init();
 
     bsp_display_unlock();
+
+    /* Create a timer to print FPS every second */
+    lv_timer_create(fps_timer_cb, 1000, NULL);
 }
