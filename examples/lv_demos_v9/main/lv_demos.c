@@ -176,7 +176,12 @@ void app_main(void)
             .buff_spiram = true,
         }
     };
-    bsp_display_start_with_config(&cfg);
+    lv_disp_t * disp = bsp_display_start_with_config(&cfg);
+    
+    lv_display_set_tile_cnt(disp, 8);
+    
+    //lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_0); 
+    //lv_display_set_matrix_rotation(disp, false);
 
     /* Set display brightness to 100% */
     bsp_display_backlight_on();
@@ -188,7 +193,7 @@ void app_main(void)
     bsp_display_unlock();
 
     /* Register display refresh event to count frames */
-    lv_display_t * disp = lv_display_get_default();
+    disp = lv_display_get_default();
     if(disp) {
         lv_display_add_event_cb(disp, disp_event_cb, LV_EVENT_REFR_READY, NULL);
     }
