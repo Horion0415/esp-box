@@ -15,8 +15,8 @@ void app_main(void)
     /* Initialize display and LVGL */
     bsp_display_cfg_t cfg = {
         .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
-        .buffer_size = BSP_LCD_H_RES * CONFIG_BSP_LCD_DRAW_BUF_HEIGHT,
-        .double_buffer = 0,
+        .buffer_size = BSP_LCD_H_RES * BSP_LCD_V_RES,
+        .double_buffer = 1,
         .flags = {
             .buff_spiram = true,
         }
