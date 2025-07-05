@@ -6,8 +6,34 @@
 
 #include "esp_log.h"
 #include "bsp/esp-bsp.h"
+#include "lvgl.h"
 
 #include "demos/lv_demos.h"
+
+static uint32_t s_frame_cnt = 0;
+
+static void disp_event_cb(lv_event_t * e)
+{
+    if(lv_event_get_code(e) == LV_EVENT_REFR_READY) {
+        s_frame_cnt++;
+    }
+}
+
+static void fps_timer_cb(lv_timer_t * t)
+{
+    static uint32_t last_time = 0;
+    uint32_t now = lv_tick_get();
+    if(last_time == 0) {
+        last_time = now;
+        s_frame_cnt = 0;
+        return;
+    }
+    uint32_t elaps = lv_tick_elaps(last_time);
+    uint32_t fps = elaps ? (s_frame_cnt * 1000 / elaps) : 0;
+    ESP_LOGI("FPS", "FPS: %lu", fps);
+    s_frame_cnt = 0;
+    last_time = now;
+}
 
 void ui_setting_screen_init(void)
 {
@@ -160,4 +186,13 @@ void app_main(void)
     ui_setting_screen_init();
 
     bsp_display_unlock();
+
+    /* Register display refresh event to count frames */
+    lv_display_t * disp = lv_display_get_default();
+    if(disp) {
+        lv_display_add_event_cb(disp, disp_event_cb, LV_EVENT_REFR_READY, NULL);
+    }
+
+    /* Create a timer to print FPS every second */
+    lv_timer_create(fps_timer_cb, 1000, NULL);
 }
