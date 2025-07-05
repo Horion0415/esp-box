@@ -28,10 +28,7 @@ void app_main(void)
 
     bsp_display_lock(0);
 
-    //lv_demo_music();        /* A modern, smartphone-like music player demo. */
-    lv_demo_render(LV_DEMO_RENDER_SCENE_BLEND_MODE, LV_OPA_COVER);   // 渲染带纹理的圆弧
-    //lv_demo_vector_graphic_buffered();     // 或 lv_demo_vector_graphic_not_buffered();
-
+    lv_demo_music();        /* A modern, smartphone-like music player demo. */
 
     bsp_display_unlock();
 }
